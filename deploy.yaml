@@ -1,11 +1,34 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: Template para deploy de Function
 
+Mappings:
+  EventBridge:
+    StartEC2:
+      Cron: "cron(0 08 * * ? *)"
+      Payload: '{ "action": "Start" }'
+    StopEC2:
+      Cron: "cron(0 20 * * ? *)"
+      Payload: '{ "action": "Stop" }'
+
+Parameters:
+  FunctionName:
+    Type: String
+    Default: "Start-Stop-EC2"
+    Description: Function name
+
+  BucketS3Name:
+    Type: String
+    Description: Bucket with function zip file
+
+  BucketS3Key:
+    Type: String
+    Description: function code zip file name
+
 Resources:
   LambdaRole:
     Type: 'AWS::IAM::Role'
     Properties:
-      RoleName: "Start-Stop-EC2"
+      RoleName: !Sub "${FunctionName}"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -20,7 +43,7 @@ Resources:
   RolePolicies: 
     Type: "AWS::IAM::Policy"
     Properties: 
-      PolicyName: "Start-Stop-EC2-Policy"
+      PolicyName: !Sub "${FunctionName}-Policy"
       PolicyDocument: 
         Version: "2012-10-17"
         Statement:
@@ -42,11 +65,11 @@ Resources:
   LambdaFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: "Start-Stop-EC2"
+      FunctionName: !Ref FunctionName
       Description: Function para ligar e desligar instancias EC2
       Code:
-        S3Bucket: tbarroscloud-deploy-lambda-function
-        S3Key: function_start_stop_ec2.zip
+        S3Bucket: !Ref BucketS3Name
+        S3Key: !Ref BucketS3Key
       MemorySize: 128
       Timeout: 10
       Handler: lambda_function.lambda_handler
@@ -55,3 +78,57 @@ Resources:
         - x86_64
       PackageType: Zip
       Role: !GetAtt LambdaRole.Arn
+
+  EventBridgeRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: !Sub "${FunctionName}-Scheduler"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - scheduler.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: "InvokeLambdaFunction"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: 
+                  - "lambda:InvokeFunction"
+                Resource: !GetAtt LambdaFunction.Arn
+
+  StartSchedule:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      Name: Start-EC2
+      Description: Start EC2 Instance
+      FlexibleTimeWindow: 
+        Mode: "OFF"
+      ScheduleExpression: !FindInMap ["EventBridge", "StartEC2", "Cron"]
+      ScheduleExpressionTimezone: "America/Sao_Paulo"
+      State: "ENABLED"
+      Target: 
+        Arn: !GetAtt LambdaFunction.Arn
+        Input: !FindInMap ["EventBridge", "StartEC2", "Payload"]
+        RoleArn: !GetAtt EventBridgeRole.Arn
+
+  StopSchedule:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      Name: Stop-EC2
+      Description: Stop EC2 Instance
+      FlexibleTimeWindow: 
+        Mode: "OFF"
+      ScheduleExpression: !FindInMap ["EventBridge", "StopEC2", "Cron"]
+      ScheduleExpressionTimezone: "America/Sao_Paulo"
+      State: "ENABLED"
+      Target: 
+        Arn: !GetAtt LambdaFunction.Arn
+        Input: !FindInMap ["EventBridge", "StopEC2", "Payload"]
+        RoleArn: !GetAtt EventBridgeRole.Arn
