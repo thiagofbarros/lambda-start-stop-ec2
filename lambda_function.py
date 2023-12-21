@@ -8,13 +8,14 @@ def lambda_handler(event, context):
 
     instances = ec2.instances.filter(Filters = [{'Name': 'tag:AutoStartStop', 'Values': ['true']}])
 
-    if action == 'Start':
-        for instance in instances:
-            print(f"Ligando a instância {instance.id}...")
+    for instance in instances:
+        if action == 'Start':     
+            print(f"Iniciando a instância {instance.id}...")
             instance.start()
             
-    elif action == 'Stop':
-        for instance in instances:
+        elif action == 'Stop':
             print(f"Desligando a instância {instance.id}...")
             instance.stop()
-            
+    
+        else:
+            print("Parâmetro inválido!")
