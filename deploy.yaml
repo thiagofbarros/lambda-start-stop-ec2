@@ -6,9 +6,11 @@ Mappings:
     StartEC2:
       Cron: "cron(0 08 * * ? *)"
       Payload: '{ "action": "Start" }'
+      TimeZone: "America/Sao_Paulo"
     StopEC2:
       Cron: "cron(0 20 * * ? *)"
       Payload: '{ "action": "Stop" }'
+      TimeZone: "America/Sao_Paulo"
 
 Parameters:
   FunctionName:
@@ -111,7 +113,7 @@ Resources:
       FlexibleTimeWindow: 
         Mode: "OFF"
       ScheduleExpression: !FindInMap ["EventBridge", "StartEC2", "Cron"]
-      ScheduleExpressionTimezone: "America/Sao_Paulo"
+      ScheduleExpressionTimezone: !FindInMap ["EventBridge", "StartEC2", "TimeZone"]
       State: "ENABLED"
       Target: 
         Arn: !GetAtt LambdaFunction.Arn
@@ -126,7 +128,7 @@ Resources:
       FlexibleTimeWindow: 
         Mode: "OFF"
       ScheduleExpression: !FindInMap ["EventBridge", "StopEC2", "Cron"]
-      ScheduleExpressionTimezone: "America/Sao_Paulo"
+      ScheduleExpressionTimezone: ["EventBridge", "StopEC2", "TimeZone"]
       State: "ENABLED"
       Target: 
         Arn: !GetAtt LambdaFunction.Arn
