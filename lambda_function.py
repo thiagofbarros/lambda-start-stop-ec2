@@ -6,12 +6,7 @@ def lambda_handler(event, context):
     action = event["action"]
 
     instances = ec2.instances.filter(
-        Filters = [
-            {
-                'Name': 'tag:AutoStartStop',
-                'Values': ['true']
-            }
-        ]
+        Filters = [{'Name': 'tag:AutoStartStop','Values': ['true']}]
     )
 
     for instance in instances:
