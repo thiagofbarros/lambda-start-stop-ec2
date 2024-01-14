@@ -128,7 +128,7 @@ Resources:
       FlexibleTimeWindow: 
         Mode: "OFF"
       ScheduleExpression: !FindInMap ["EventBridge", "StopEC2", "Cron"]
-      ScheduleExpressionTimezone: ["EventBridge", "StopEC2", "TimeZone"]
+      ScheduleExpressionTimezone: !FindInMap ["EventBridge", "StopEC2", "TimeZone"]
       State: "ENABLED"
       Target: 
         Arn: !GetAtt LambdaFunction.Arn
